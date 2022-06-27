@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.20.0/full/pyodide.js"></script>
+</head>
+<style>
+  #loading {
+    margin: auto;
+    width: 800px;
+  }
+
+  body {
+    background-color: #2a80b9;
+  }
+
+  #main {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 800px;
+    margin: auto;
+    display: none;
+  }
+
+  pre {
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #ededed;
+    border-radius: 4px;
+  }
+</style>
+</div>
+<body>
+  <div id="loading"><img src="loading.gif"></div>
+  <div id="main">
+    <input type="file" id="file">
+    <button disabled id="download_button">Download Datapackage</button>
+    <pre id="datapackage"></pre>
+  </div>
+<script type="text/javascript">
+
+var file_content = null;
+
+async function main() {
+  let pyodide = await loadPyodide();
+
+  await pyodide.loadPackage("micropip");
+  await pyodide.runPythonAsync(`
+          import micropip, js
+          await micropip.install('http://localhost:8080/petl-1.7.10-py3-none-any.whl')
+          await micropip.install('http://localhost:8080/stringcase-1.2.0-py3-none-any.whl')
+          await micropip.install('frictionless')
+
+          js.document.getElementById('loading').style.display = 'none'
+          js.document.getElementById('main').style.display = 'block'
+      `)
+
+  function doit() {
+      var file = document.getElementById("file").files[0];
+      var reader = new FileReader();
+      reader.readAsBinaryString(file);
+      reader.onload = async evt => { 
+          file_content = evt.target.result; 
+          let output = await pyodide.runPythonAsync(`
+            from js import file_content
+            from frictionless import Resource
+
+            with open('/${file.name}', 'wt') as fh:
+               fh.write(file_content)
+            r = Resource('/${file.name}')
+            r.infer()
+        
+            r.to_json()
+          `);
+ 
+          document.getElementById('datapackage').innerHTML = output
+          var l = output.length;
+          var array = new Uint8Array(l);
+          for (var i = 0; i < l; i++) {
+              array[i] = output.charCodeAt(i);
+          }
+          var blob = new Blob([array], {type: 'text/json'});
+
+          let btn = document.getElementById('download_button')
+          btn.disabled = false
+          btn.onclick = () => {
+            var elem = window.document.createElement('a');
+            elem.href = window.URL.createObjectURL(blob);
+            elem.download = 'datapackage.json';
+            document.body.appendChild(elem);
+            elem.click();        
+            document.body.removeChild(elem);
+          }
+      }
+  }
+
+  document.getElementById('file').onchange = doit
+
+}
+
+main();
+
+ 
+</script>
+</body>
+</html>
+
