@@ -48,8 +48,8 @@ async function main() {
   await pyodide.loadPackage("micropip");
   await pyodide.runPythonAsync(`
           import micropip, js
-          await micropip.install('http://localhost:8080/petl-1.7.10-py3-none-any.whl')
-          await micropip.install('http://localhost:8080/stringcase-1.2.0-py3-none-any.whl')
+          await micropip.install('petl-1.7.10-py3-none-any.whl')
+          await micropip.install('stringcase-1.2.0-py3-none-any.whl')
           await micropip.install('frictionless')
 
           js.document.getElementById('loading').style.display = 'none'
